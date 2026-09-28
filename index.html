@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laboratorio ESP32 - Sensores y Actuadores | Tecnoteca</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --border: #334155;
+      --code-bg: #030712;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 24px; line-height: 1.6; }
+    header { text-align: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    h1 { color: var(--accent); font-size: 2.2rem; margin-bottom: 0.5rem; }
+    .badge { background: #0369a1; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; }
+    
+    .alert-banner { background: rgba(239, 68, 68, 0.15); border: 2px solid var(--danger); border-radius: 10px; padding: 16px; margin: 0 auto 2rem auto; max-width: 950px; }
+    .alert-banner strong { color: #fca5a5; }
+
+    .nav-tabs { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 2rem; }
+    .tab-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.2s ease; }
+    .tab-btn:hover { border-color: var(--accent); }
+    .tab-btn.active { background: var(--accent); color: #0284c7; background-color: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+    .content-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 950px; margin: 0 auto; display: none; }
+    .content-card.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    h2 { color: var(--accent); margin-bottom: 1.2rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; font-size: 1.5rem; }
+    h3 { margin-top: 1.5rem; margin-bottom: 0.6rem; color: #e2e8f0; font-size: 1.15rem; }
+    
+    .checklist label { display: block; background: rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 6px; margin-bottom: 6px; cursor: pointer; border: 1px solid transparent; }
+    .checklist label:hover { border-color: var(--border); }
+    .checklist input { margin-right: 12px; accent-color: var(--accent); transform: scale(1.15); }
+
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; color: #a5f3fc; font-family: "Fira Code", monospace; font-size: 0.9rem; margin: 12px 0; }
+    .code-container { position: relative; }
+    .copy-btn { position: absolute; top: 12px; right: 12px; background: #334155; border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
+    .copy-btn:hover { background: var(--accent); color: var(--bg); }
+
+    .placeholder-box { border: 2px dashed #475569; border-radius: 10px; padding: 30px; text-align: center; color: var(--text-muted); margin: 16px 0; background: rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <span class="badge">ESP32 & IoT</span>
+    <h1>Trayecto de Robótica: Sensores y Actuadores</h1>
+    <p style="color: var(--text-muted);">Guía práctica interactiva de laboratorio y programación en protoboard</p>
+  </header>
+
+  <div class="alert-banner">
+    <strong>⚠️ Regla crítica de laboratorio:</strong> El ESP32 opera a <strong>3.3V</strong>. Ningún pin GPIO tolera 5V directos. Todo sensor alimentado a 5V con línea de retorno (como el pin ECHO del HC-SR04) requiere divisor de tensión con resistencias para ingresar a 3.3V.
+  </div>
+
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab(0)">1. Enclavamiento Relay</button>
+    <button class="tab-btn" onclick="switchTab(1)">2. Servo Analógico</button>
+    <button class="tab-btn" onclick="switchTab(2)">3. Radar Ultrasónico</button>
+    <button class="tab-btn" onclick="switchTab(3)">4. Joystick Integrado</button>
+  </nav>
+
+  <!-- NIVEL 1 -->
+  <section class="content-card active" id="tab-0">
+    <h2>Nivel 1: Enclavamiento Digital (Pulsador + Módulo Relay)</h2>
+    <h3>Materiales del Puesto</h3>
+    <div class="checklist">
+      <label><input type="checkbox"> 1x NodeMCU ESP-32S (38 pines)</label>
+      <label><input type="checkbox"> 1x Módulo Relay de 1 canal (5V)</label>
+      <label><input type="checkbox"> 1x Pulsador con capuchón</label>
+      <label><input type="checkbox"> Cables Dupont Macho-Macho y Macho-Hembra</label>
+    </div>
+
+    <h3>Esquema de Conexión en Protoboard</h3>
+    <pre>
+PULSADOR:
+- Terminal A ----> GPIO 18 (Usa resistencia interna INPUT_PULLUP)
+- Terminal B ----> GND
+
+MÓDULO RELAY:
+- VCC        ----> VIN (5V del cable USB)
+- GND        ----> GND del ESP32
+- IN         ----> GPIO 23
+    </pre>
+
+    <div class="placeholder-box">
+      <em>Pegar aquí la captura del conexionado en Wokwi / Simulador</em>
+    </div>
+
+    <h3>Código Fuente (C++)</h3>
+    <div class="code-container">
+      <button class="copy-btn" onclick="copyCode('c1')">Copiar</button>
+      <pre id="c1"><code>#define PIN_PULSADOR 18
+#define PIN_RELAY    23
+
+bool estadoRelay = false;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_PULSADOR, INPUT_PULLUP);
+  pinMode(PIN_RELAY, OUTPUT);
+  digitalWrite(PIN_RELAY, HIGH); // Apagado en lógica Active-LOW
+  Serial.println("Relay inicializado.");
+}
+
+void loop() {
+  if (digitalRead(PIN_PULSADOR) == LOW) {
+    estadoRelay = !estadoRelay;
+    digitalWrite(PIN_RELAY, estadoRelay ? LOW : HIGH);
+    Serial.println(estadoRelay ? "RELAY: ON" : "RELAY: OFF");
+
+    while (digitalRead(PIN_PULSADOR) == LOW) { delay(10); }
+    delay(50); // Filtro antirrebote
+  }
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- NIVEL 2 -->
+  <section class="content-card" id="tab-1">
+    <h2>Nivel 2: Control Proporcional (Potenciómetro + Servomotor SG90)</h2>
+    <h3>Materiales del Puesto</h3>
+    <div class="checklist">
+      <label><input type="checkbox"> 1x Servomotor SG90</label>
+      <label><input type="checkbox"> 1x Potenciómetro de 10 kΩ</label>
+      <label><input type="checkbox"> 1x Capacitor electrolítico de 470 µF / 25V</label>
+      <label><input type="checkbox"> Librería ESP32Servo instalada en Arduino IDE</label>
+    </div>
+
+    <h3>Esquema de Conexión en Protoboard</h3>
+    <pre>
+POTENCIÓMETRO:
+- Lateral 1    ----> GND
+- Pin Central  ----> GPIO 34 (ADC1: rango 0 a 4095)
+- Lateral 2    ----> 3.3V (¡Nunca a 5V!)
+
+SERVOMOTOR SG90:
+- Marrón (GND) ----> GND
+- Rojo (VCC)   ----> VIN (5V USB)
+- Naranja (PWM)----> GPIO 21
+- Capacitor    ----> 470 µF en paralelo con alimentación del servo
+    </pre>
+
+    <div class="placeholder-box">
+      <em>Pegar aquí la captura del conexionado en Wokwi / Simulador</em>
+    </div>
+
+    <h3>Código Fuente (C++)</h3>
+    <div class="code-container">
+      <button class="copy-btn" onclick="copyCode('c2')">Copiar</button>
+      <pre id="c2"><code>#include &lt;ESP32Servo.h&gt;
+
+#define PIN_POT   34
+#define PIN_SERVO 21
+
+Servo miServo;
+
+void setup() {
+  Serial.begin(115200);
+  miServo.setPeriodHertz(50);
+  miServo.attach(PIN_SERVO, 500, 2400);
+}
+
+void loop() {
+  int valorADC = analogRead(PIN_POT);
+  int angulo = map(valorADC, 0, 4095, 0, 180);
+  miServo.write(angulo);
+
+  Serial.printf("ADC: %4d -> Ángulo: %3d°\n", valorADC, angulo);
+  delay(20);
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- NIVEL 3 -->
+  <section class="content-card" id="tab-2">
+    <h2>Nivel 3: Radar de Proximidad (HC-SR04 + Divisor + Buzzer)</h2>
+    <h3>Materiales del Puesto</h3>
+    <div class="checklist">
+      <label><input type="checkbox"> 1x Sensor ultrasónico HC-SR04</label>
+      <label><input type="checkbox"> 1x Buzzer activo</label>
+      <label><input type="checkbox"> 1x Resistencia 1 kΩ (R1) y 2x Resistencias 1 kΩ (R2: 2 kΩ)</label>
+    </div>
+
+    <h3>Esquema de Conexión y Divisor Resistivo</h3>
+    <pre>
+SENSOR HC-SR04:
+- VCC  ----> VIN (5V USB)
+- GND  ----> GND
+- TRIG ----> GPIO 5
+
+DIVISOR RESISTIVO PARA PROTEGER EL PIN ECHO:
+ECHO (5V) ----[ 1k ohm ]----+----> GPIO 18 (Recibe 3.33V seguro)
+                        |
+                   [ 2k ohm ]
+                        |
+                       GND
+
+BUZZER:
+- Positivo (+) ----> GPIO 19
+- Negativo (-) ----> GND
+    </pre>
+
+    <div class="placeholder-box">
+      <em>Pegar aquí la captura del conexionado en Wokwi / Simulador</em>
+    </div>
+
+    <h3>Código Fuente (C++)</h3>
+    <div class="code-container">
+      <button class="copy-btn" onclick="copyCode('c3')">Copiar</button>
+      <pre id="c3"><code>#define PIN_TRIG   5
+#define PIN_ECHO   18
+#define PIN_BUZZER 19
+
+const int DISTANCIA_UMBRAL = 15; // cm
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_TRIG, OUTPUT);
+  pinMode(PIN_ECHO, INPUT);
+  pinMode(PIN_BUZZER, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(PIN_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_TRIG, LOW);
+
+  long duracion = pulseIn(PIN_ECHO, HIGH, 30000);
+  float distancia = (duracion * 0.0343) / 2.0;
+
+  if (distancia > 0 && distancia <= DISTANCIA_UMBRAL) {
+    digitalWrite(PIN_BUZZER, HIGH);
+  } else {
+    digitalWrite(PIN_BUZZER, LOW);
+  }
+
+  Serial.printf("Distancia: %.1f cm\n", distancia);
+  delay(100);
+}</code></pre>
+    </div>
+  </section>
+
+  <!-- NIVEL 4 -->
+  <section class="content-card" id="tab-3">
+    <h2>Nivel 4: Consola de Control (Joystick 2 Ejes + Servo + Gatillo)</h2>
+    <h3>Materiales del Puesto</h3>
+    <div class="checklist">
+      <label><input type="checkbox"> 1x Módulo Joystick analógico</label>
+      <label><input type="checkbox"> 1x Servomotor SG90</label>
+      <label><input type="checkbox"> 1x Buzzer activo o pasivo</label>
+      <label><input type="checkbox"> 1x Capacitor electrolítico 470 µF</label>
+    </div>
+
+    <h3>Esquema de Conexión en Protoboard</h3>
+    <pre>
+JOYSTICK:
+- GND  ----> GND
+- +5V  ----> 3.3V del ESP32 (¡Para no sobrepasar el rango del ADC!)
+- VRx  ----> GPIO 34 (ADC1)
+- VRy  ----> GPIO 35 (ADC1)
+- SW   ----> GPIO 22 (INPUT_PULLUP)
+
+SERVO SG90:
+- VCC (Rojo)   ----> VIN (5V USB)
+- GND (Marrón) ----> GND
+- Señal        ----> GPIO 21
+
+BUZZER:
+- Positivo (+) ----> GPIO 19
+- Negativo (-) ----> GND
+    </pre>
+
+    <div class="placeholder-box">
+      <em>Pegar aquí la captura del conexionado en Wokwi / Simulador</em>
+    </div>
+
+    <h3>Código Fuente (C++)</h3>
+    <div class="code-container">
+      <button class="copy-btn" onclick="copyCode('c4')">Copiar</button>
+      <pre id="c4"><code>#include &lt;ESP32Servo.h&gt;
+
+#define PIN_JOY_X   34
+#define PIN_JOY_Y   35
+#define PIN_JOY_SW  22
+#define PIN_SERVO   21
+#define PIN_BUZZER  19
+
+Servo miServo;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIN_JOY_SW, INPUT_PULLUP);
+  pinMode(PIN_BUZZER, OUTPUT);
+  miServo.setPeriodHertz(50);
+  miServo.attach(PIN_SERVO, 500, 2400);
+}
+
+void loop() {
+  int x = analogRead(PIN_JOY_X);
+  int y = analogRead(PIN_JOY_Y);
+  bool disparador = (digitalRead(PIN_JOY_SW) == LOW);
+
+  int angulo = map(x, 0, 4095, 0, 180);
+  miServo.write(angulo);
+
+  digitalWrite(PIN_BUZZER, disparador ? HIGH : LOW);
+
+  Serial.printf("X: %4d -> %3d° | Gatillo: %d\n", x, angulo, disparador);
+  delay(30);
+}</code></pre>
+    </div>
+  </section>
+
+  <script>
+    function switchTab(idx) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+      document.querySelectorAll('.content-card').forEach((c, i) => c.classList.toggle('active', i === idx));
+    }
+    function copyCode(id) {
+      const code = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(code).then(() => alert("¡Código copiado al portapapeles!"));
+    }
+  </script>
+</body>
+</html>
